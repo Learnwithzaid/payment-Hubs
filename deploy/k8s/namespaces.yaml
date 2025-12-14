@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pci-cde
+  labels:
+    security.pci-dss/scope: cde
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pci-monitoring
+  labels:
+    security.pci-dss/scope: non-cde
