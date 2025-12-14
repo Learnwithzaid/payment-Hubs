@@ -69,7 +69,7 @@ type CreateAccountRequest struct {
 
 // Credit posts a credit entry to an account
 func (ls *LedgerService) Credit(ctx context.Context, req CreditRequest) error {
-    return ls.postTransaction(ctx, req.TransactionRequest, "credit")
+    return ls.postTransaction(ctx, req.TransactionRequest, req.AccountID, req.Amount, "credit")
 }
 
 // CreditRequest represents the request to post a credit
@@ -82,7 +82,7 @@ type CreditRequest struct {
 
 // Debit posts a debit entry to an account
 func (ls *LedgerService) Debit(ctx context.Context, req DebitRequest) error {
-    return ls.postTransaction(ctx, req.TransactionRequest, "debit")
+    return ls.postTransaction(ctx, req.TransactionRequest, req.AccountID, req.Amount, "debit")
 }
 
 // DebitRequest represents the request to post a debit
@@ -105,14 +105,14 @@ type TransactionRequest struct {
 }
 
 // postTransaction handles both credit and debit posting with double-entry validation
-func (ls *LedgerService) postTransaction(ctx context.Context, req TransactionRequest, entryType string) error {
+func (ls *LedgerService) postTransaction(ctx context.Context, req TransactionRequest, accountID string, amount float64, entryType string) error {
     // Validate transaction ID
     if req.TransactionID == "" {
         req.TransactionID = uuid.New().String()
     }
     
     // Validate amount
-    if req.Amount <= 0 {
+    if amount <= 0 {
         return fmt.Errorf("amount must be positive")
     }
     
@@ -127,8 +127,8 @@ func (ls *LedgerService) postTransaction(ctx context.Context, req TransactionReq
         EntryNumber:   entryNumber,
         TransactionID: req.TransactionID,
         EntryType:     entryType,
-        AccountID:     req.AccountID,
-        Amount:        req.Amount,
+        AccountID:     accountID,
+        Amount:        amount,
         Description:   req.Description,
         ReferenceType: req.ReferenceType,
         ReferenceID:   req.ReferenceID,
