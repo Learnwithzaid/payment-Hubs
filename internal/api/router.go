@@ -10,6 +10,7 @@ import (
     "github.com/go-chi/chi/v5/middleware"
 
     "github.com/example/pci-infra/internal/auth"
+    "github.com/example/pci-infra/internal/disputes"
     "github.com/example/pci-infra/internal/ledger"
     "github.com/example/pci-infra/internal/security"
     "github.com/example/pci-infra/pkg/audit"
@@ -32,6 +33,16 @@ type Dependencies struct {
         CreateAccount(ctx context.Context, req ledger.CreateAccountRequest) (*ledger.Account, error)
         Debit(ctx context.Context, req ledger.DebitRequest) error
         Credit(ctx context.Context, req ledger.CreditRequest) error
+    }
+    DisputesService interface {
+        CreateDispute(ctx context.Context, req disputes.CreateDisputeRequest) (*disputes.Dispute, error)
+        AuthorizeDispute(ctx context.Context, disputeID, authorizedBy string) error
+        SettleTransaction(ctx context.Context, journalEntryID, settledBy string) error
+        InitiateDispute(ctx context.Context, disputeID, initiatedBy string) error
+        ReverseDispute(ctx context.Context, disputeID, reversedBy, reason string) error
+        GetDispute(ctx context.Context, disputeID string) (*disputes.Dispute, error)
+        ListDisputes(ctx context.Context, filter disputes.DisputeFilter) ([]*disputes.Dispute, error)
+        CalculateMerchantReserve(ctx context.Context, merchantID string, transactionVolume float64) (float64, error)
     }
 
     Auditor      Auditor
@@ -101,6 +112,35 @@ func NewRouter(deps Dependencies) (http.Handler, error) {
             r.With(auth.RequireScopes("ledger:write", onAuthError), debitV.Middleware).Post("/debit", handleDebit(deps))
             r.With(auth.RequireScopes("ledger:write", onAuthError), creditV.Middleware).Post("/credit", handleCredit(deps))
             r.With(auth.RequireScopes("ledger:read", onAuthError)).Get("/balance", handleBalance(deps))
+        })
+
+        r.Route("/disputes", func(r chi.Router) {
+            create := r.With(auth.RequireScopes("disputes:write", onAuthError), disputesSchema.Middleware)
+            create.Post("/", handleCreateDispute(deps))
+            create.Post("", handleCreateDispute(deps))
+
+            authorize := r.With(auth.RequireScopes("disputes:write", onAuthError))
+            authorize.Post("/{dispute_id}/authorize", handleAuthorizeDispute(deps))
+
+            settle := r.With(auth.RequireScopes("disputes:write", onAuthError))
+            settle.Post("/settle", handleSettleTransaction(deps))
+
+            dispute := r.With(auth.RequireScopes("disputes:write", onAuthError))
+            dispute.Post("/{dispute_id}/dispute", handleInitiateDispute(deps))
+
+            reverse := r.With(auth.RequireScopes("disputes:write", onAuthError))
+            reverse.Post("/{dispute_id}/reverse", handleReverseDispute(deps))
+
+            get := r.With(auth.RequireScopes("disputes:read", onAuthError))
+            get.Get("/{dispute_id}", handleGetDispute(deps))
+            get.Get("/{dispute_id}/history", handleGetDisputeHistory(deps))
+
+            list := r.With(auth.RequireScopes("disputes:read", onAuthError))
+            list.Get("/", handleListDisputes(deps))
+            list.Get("", handleListDisputes(deps))
+
+            reserve := r.With(auth.RequireScopes("disputes:read", onAuthError))
+            reserve.Get("/reserve/calculate", handleCalculateReserve(deps))
         })
     })
 

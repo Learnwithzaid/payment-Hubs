@@ -32,3 +32,21 @@ const debitSchema = `{
 }`
 
 const creditSchema = debitSchema
+
+const disputesSchema = `{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["journal_entry_id", "merchant_id", "disputed_amount", "currency_code", "reason_code", "reason_text", "created_by"],
+  "properties": {
+    "journal_entry_id": {"type": "string", "minLength": 1},
+    "merchant_id": {"type": "string", "minLength": 1},
+    "disputed_amount": {"type": "number", "exclusiveMinimum": 0},
+    "currency_code": {"type": "string", "pattern": "^[A-Z]{3}$"},
+    "reason_code": {"type": "string", "minLength": 1},
+    "reason_text": {"type": "string", "minLength": 1},
+    "reference_type": {"type": "string"},
+    "reference_id": {"type": "string"},
+    "created_by": {"type": "string", "minLength": 1},
+    "metadata": {"type": "object"}
+  }
+}`

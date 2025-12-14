@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package disputes;
+
+option go_package = "github.com/example/pci-infra/api/gen/disputes;disputespb";
+
+service DisputesService {
+  rpc CreateDispute(CreateDisputeRequest) returns (CreateDisputeResponse);
+  rpc AuthorizeDispute(AuthorizeDisputeRequest) returns (AuthorizeDisputeResponse);
+  rpc SettleTransaction(SettleTransactionRequest) returns (SettleTransactionResponse);
+  rpc InitiateDispute(InitiateDisputeRequest) returns (InitiateDisputeResponse);
+  rpc ReverseDispute(ReverseDisputeRequest) returns (ReverseDisputeResponse);
+  rpc GetDispute(GetDisputeRequest) returns (GetDisputeResponse);
+  rpc ListDisputes(ListDisputesRequest) returns (ListDisputesResponse);
+  rpc GetDisputeHistory(GetDisputeHistoryRequest) returns (GetDisputeHistoryResponse);
+  rpc CalculateReserve(CalculateReserveRequest) returns (CalculateReserveResponse);
+}
+
+message CreateDisputeRequest {
+  string journal_entry_id = 1;
+  string merchant_id = 2;
+  double disputed_amount = 3;
+  string currency_code = 4; // ISO 4217, e.g., USD
+  string reason_code = 5; // Visa/Mastercard reason code
+  string reason_text = 6;
+  string reference_type = 7;
+  string reference_id = 8;
+  string created_by = 9;
+  map<string, string> metadata = 10;
+}
+
+message CreateDisputeResponse {
+  string dispute_id = 1;
+  string journal_entry_id = 2;
+  string merchant_id = 3;
+  double original_amount = 4;
+  double disputed_amount = 5;
+  string currency_code = 6;
+  string reason_code = 7;
+  string reason_text = 8;
+  string status = 9; // PENDING, AUTHORIZED, SETTLED, DISPUTED, REVERSED
+  bool is_fraud = 10;
+  double chargeback_fee = 11;
+  string created_at = 12;
+  string created_by = 13;
+  map<string, string> metadata = 14;
+}
+
+message AuthorizeDisputeRequest {
+  string dispute_id = 1;
+  string authorized_by = 2;
+}
+
+message AuthorizeDisputeResponse {
+  bool success = 1;
+  string status = 2;
+  string authorized_at = 3;
+  string authorized_by = 4;
+}
+
+message SettleTransactionRequest {
+  string journal_entry_id = 1;
+  string settled_by = 2;
+}
+
+message SettleTransactionResponse {
+  bool success = 1;
+  string status = 2;
+  string settled_at = 3;
+  string settled_by = 4;
+}
+
+message InitiateDisputeRequest {
+  string dispute_id = 1;
+  string initiated_by = 2;
+}
+
+message InitiateDisputeResponse {
+  bool success = 1;
+  string status = 2;
+  string initiated_at = 3;
+  string initiated_by = 4;
+}
+
+message ReverseDisputeRequest {
+  string dispute_id = 1;
+  string reversed_by = 2;
+  string reason = 3;
+}
+
+message ReverseDisputeResponse {
+  bool success = 1;
+  string status = 2;
+  string reversed_at = 3;
+  string reversed_by = 4;
+}
+
+message GetDisputeRequest {
+  string dispute_id = 1;
+}
+
+message GetDisputeResponse {
+  string dispute_id = 1;
+  string journal_entry_id = 2;
+  string merchant_id = 3;
+  double original_amount = 4;
+  double disputed_amount = 5;
+  string currency_code = 6;
+  string reason_code = 7;
+  string reason_text = 8;
+  string status = 9;
+  bool is_fraud = 10;
+  double chargeback_fee = 11;
+  string created_at = 12;
+  string created_by = 13;
+  string resolved_at = 14;
+  string resolved_by = 15;
+  map<string, string> metadata = 16;
+}
+
+message ListDisputesRequest {
+  string merchant_id = 1;
+  string status = 2;
+  bool is_fraud = 3;
+  string created_after = 4; // RFC3339 timestamp
+  int32 limit = 5;
+  int32 offset = 6;
+}
+
+message ListDisputesResponse {
+  repeated Dispute disputes = 1;
+  int32 total = 2;
+}
+
+message Dispute {
+  string dispute_id = 1;
+  string journal_entry_id = 2;
+  string merchant_id = 3;
+  double original_amount = 4;
+  double disputed_amount = 5;
+  string currency_code = 6;
+  string reason_code = 7;
+  string reason_text = 8;
+  string status = 9;
+  bool is_fraud = 10;
+  double chargeback_fee = 11;
+  string created_at = 12;
+  string created_by = 13;
+  string resolved_at = 14;
+  string resolved_by = 15;
+  map<string, string> metadata = 16;
+}
+
+message GetDisputeHistoryRequest {
+  string dispute_id = 1;
+}
+
+message StateTransition {
+  string transition_id = 1;
+  string dispute_id = 2;
+  string from_state = 3;
+  string to_state = 4;
+  string reason = 5;
+  string transition_hash = 6;
+  string prev_hash = 7;
+  string created_at = 8;
+  string created_by = 9;
+  map<string, string> metadata = 10;
+}
+
+message GetDisputeHistoryResponse {
+  repeated StateTransition transitions = 1;
+}
+
+message CalculateReserveRequest {
+  string merchant_id = 1;
+  double transaction_volume = 2;
+  string currency_code = 3;
+}
+
+message CalculateReserveResponse {
+  double required_reserve = 1;
+  string currency_code = 2;
+  double reserve_percentage = 3;
+  double minimum_reserve = 4;
+  double current_reserve = 5;
+}
