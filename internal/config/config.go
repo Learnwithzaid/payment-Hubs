@@ -14,9 +14,11 @@ type Config struct {
     KMSSigner   string
 }
 
-// Load loads configuration from environment variables with flexible validation.
-// For development/testing, it allows plain DATABASE_URL values.
-func Load() (*Config, error) {
+// LoadFromEnv loads configuration from environment variables.
+//
+// In production/staging environments, it requires secret indirection for sensitive
+// values (e.g., DATABASE_URL must be a KMS/Vault reference).
+func LoadFromEnv() (*Config, error) {
     cfg := &Config{
         Environment: os.Getenv("APP_ENV"),
         DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -29,6 +31,11 @@ func Load() (*Config, error) {
     }
 
     return cfg, nil
+}
+
+// Load is kept for backward compatibility.
+func Load() (*Config, error) {
+    return LoadFromEnv()
 }
 
 // Validate checks that the configuration is valid.
@@ -46,8 +53,8 @@ func (c *Config) Validate() error {
         return errors.New("missing required environment variables: " + strings.Join(missing, ", "))
     }
 
-    // In development/testing environments, allow plain DATABASE_URL
-    // In production, require KMS references for sensitive data
+    // In development/testing environments, allow plain DATABASE_URL.
+    // In production/staging environments, require secret indirection.
     if c.Environment == "production" || c.Environment == "staging" {
         if c.AuditSink == "" {
             missing = append(missing, "AUDIT_SINK")
@@ -60,7 +67,10 @@ func (c *Config) Validate() error {
             return errors.New("missing required environment variables for " + c.Environment + ": " + strings.Join(missing, ", "))
         }
 
-        // Secret indirection check: key fields should use KMS references in production
+        if !isSecretReference(c.DatabaseURL) {
+            return errors.New("DATABASE_URL must be a secret reference (start with aws-kms://, gcp-kms://, or vault://)")
+        }
+
         if c.KMSSigner != "" && !isSecretReference(c.KMSSigner) {
             return errors.New("KMS_SIGNER must be a KMS reference (start with aws-kms://, gcp-kms://, or vault://)")
         }

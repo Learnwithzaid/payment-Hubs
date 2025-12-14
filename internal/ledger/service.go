@@ -67,12 +67,12 @@ type CreateAccountRequest struct {
     Metadata      map[string]interface{} `json:"metadata"`
 }
 
-// Credit posts a credit entry to an account
+// Credit posts a credit entry to an account.
 func (ls *LedgerService) Credit(ctx context.Context, req CreditRequest) error {
-    return ls.postTransaction(ctx, req.TransactionRequest, "credit")
+    return ls.postTransaction(ctx, req.TransactionRequest, req.AccountID, req.Amount, req.Description, "credit")
 }
 
-// CreditRequest represents the request to post a credit
+// CreditRequest represents the request to post a credit.
 type CreditRequest struct {
     TransactionRequest
     AccountID   string  `json:"account_id"`
@@ -80,12 +80,12 @@ type CreditRequest struct {
     Description string  `json:"description"`
 }
 
-// Debit posts a debit entry to an account
+// Debit posts a debit entry to an account.
 func (ls *LedgerService) Debit(ctx context.Context, req DebitRequest) error {
-    return ls.postTransaction(ctx, req.TransactionRequest, "debit")
+    return ls.postTransaction(ctx, req.TransactionRequest, req.AccountID, req.Amount, req.Description, "debit")
 }
 
-// DebitRequest represents the request to post a debit
+// DebitRequest represents the request to post a debit.
 type DebitRequest struct {
     TransactionRequest
     AccountID   string  `json:"account_id"`
@@ -93,7 +93,7 @@ type DebitRequest struct {
     Description string  `json:"description"`
 }
 
-// TransactionRequest contains common fields for transactions
+// TransactionRequest contains common fields for transactions.
 type TransactionRequest struct {
     TransactionID string                 `json:"transaction_id"`
     Description   string                 `json:"description"`
@@ -104,39 +104,44 @@ type TransactionRequest struct {
     Metadata      map[string]interface{} `json:"metadata"`
 }
 
-// postTransaction handles both credit and debit posting with double-entry validation
-func (ls *LedgerService) postTransaction(ctx context.Context, req TransactionRequest, entryType string) error {
-    // Validate transaction ID
+func (ls *LedgerService) postTransaction(ctx context.Context, req TransactionRequest, accountID string, amount float64, description string, entryType string) error {
     if req.TransactionID == "" {
         req.TransactionID = uuid.New().String()
     }
-    
-    // Validate amount
-    if req.Amount <= 0 {
+
+    if accountID == "" {
+        return fmt.Errorf("account ID is required")
+    }
+
+    if amount <= 0 {
         return fmt.Errorf("amount must be positive")
     }
-    
-    // For single-entry transactions (simple credit/debit), we need to create a balancing entry
-    // This is a simplified implementation - in practice, you might want more sophisticated logic
-    
-    // Generate unique entry number
-    entryNumber := fmt.Sprintf("JE-%s-%d", req.TransactionID[:8], time.Now().UnixNano())
-    
-    // Create the journal entry
+
+    if description == "" {
+        description = req.Description
+    }
+
+    prefix := req.TransactionID
+    if len(prefix) > 8 {
+        prefix = prefix[:8]
+    }
+
+    entryNumber := fmt.Sprintf("JE-%s-%d", prefix, time.Now().UnixNano())
+
     entry := &JournalEntry{
         EntryNumber:   entryNumber,
         TransactionID: req.TransactionID,
         EntryType:     entryType,
-        AccountID:     req.AccountID,
-        Amount:        req.Amount,
-        Description:   req.Description,
+        AccountID:     accountID,
+        Amount:        amount,
+        Description:   description,
         ReferenceType: req.ReferenceType,
         ReferenceID:   req.ReferenceID,
         CurrencyCode:  req.CurrencyCode,
         CreatedBy:     req.CreatedBy,
         Metadata:      req.Metadata,
     }
-    
+
     return ls.postgres.PostJournalEntry(ctx, entry)
 }
 
