@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: Ledger API Gateway
+  version: 1.0.0
+servers:
+  - url: https://localhost:8443
+paths:
+  /oauth/token:
+    post:
+      summary: OAuth2 token (client_credentials)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type]
+              properties:
+                grant_type:
+                  type: string
+                  enum: [client_credentials]
+                scope:
+                  type: string
+      responses:
+        '200':
+          description: Token response
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [access_token, token_type, expires_in]
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                  expires_in:
+                    type: integer
+                  scope:
+                    type: string
+  /oauth/jwks.json:
+    get:
+      summary: JSON Web Key Set
+      responses:
+        '200':
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+  /v1/accounts:
+    get:
+      summary: List accounts
+      security:
+        - OAuth2: [accounts:read]
+      responses:
+        '200':
+          description: Account list
+    post:
+      summary: Create account
+      security:
+        - OAuth2: [accounts:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Created
+  /v1/ledger/debit:
+    post:
+      summary: Post debit
+      security:
+        - OAuth2: [ledger:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostEntryRequest'
+      responses:
+        '200':
+          description: OK
+  /v1/ledger/credit:
+    post:
+      summary: Post credit
+      security:
+        - OAuth2: [ledger:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostEntryRequest'
+      responses:
+        '200':
+          description: OK
+  /v1/ledger/balance:
+    get:
+      summary: Get balance
+      security:
+        - OAuth2: [ledger:read]
+      parameters:
+        - in: query
+          name: account_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          scopes:
+            accounts:read: List accounts
+            accounts:write: Create accounts
+            ledger:read: Read ledger balances
+            ledger:write: Post debit/credit
+  schemas:
+    CreateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [account_number, account_type, name, currency_code, created_by]
+      properties:
+        account_number:
+          type: string
+        account_type:
+          type: string
+          enum: [asset, liability, equity, revenue, expense]
+        name:
+          type: string
+        currency_code:
+          type: string
+        created_by:
+          type: string
+        metadata:
+          type: object
+    PostEntryRequest:
+      type: object
+      additionalProperties: false
+      required: [account_id, amount, currency_code, created_by]
+      properties:
+        transaction_id:
+          type: string
+        account_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0
+        description:
+          type: string
+        reference_type:
+          type: string
+        reference_id:
+          type: string
+        currency_code:
+          type: string
+        created_by:
+          type: string
+        metadata:
+          type: object
