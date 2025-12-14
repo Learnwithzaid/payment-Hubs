@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package audit;
+
+option go_package = "github.com/example/pci-infra/pkg/audit/proto";
+
+service AuditService {
+  rpc Ingest(IngestRequest) returns (IngestResponse);
+}
+
+message IngestRequest {
+  repeated LogEntry entries = 1;
+}
+
+message LogEntry {
+  string payload = 1;
+  // Timestamp can be assigned by server or client. 
+  // For audit trail, server time is often preferred or both.
+  // We'll accept payload.
+}
+
+message IngestResponse {
+  bool success = 1;
+  string batch_id = 2;
+}

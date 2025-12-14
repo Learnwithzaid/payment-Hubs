@@ -1,0 +1,31 @@
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task: test
+      - task: lint
+      - task: scan
+      - task: build
+
+  test:
+    cmds:
+      - go test -v -race -cover ./...
+
+  lint:
+    cmds:
+      - golangci-lint run
+
+  scan:
+    cmds:
+      - ./scripts/security_scan.sh
+
+  build:
+    cmds:
+      - go build -o bin/auditd ./cmd/auditd
+      - go build -o bin/api ./cmd/api
+      - go build -o bin/vault ./cmd/vault
+
+  clean:
+    cmds:
+      - rm -rf bin
