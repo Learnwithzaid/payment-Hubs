@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package vault;
+
+option go_package = "github.com/example/pci-infra/api/gen/vault;vaultpb";
+
+service Vault {
+  rpc TokenizeCard(TokenizeCardRequest) returns (TokenizeCardResponse);
+  rpc DetokenizeCard(DetokenizeCardRequest) returns (DetokenizeCardResponse);
+  rpc RotateKey(RotateKeyRequest) returns (RotateKeyResponse);
+}
+
+message TokenizeCardRequest {
+  string pan = 1;           // Primary Account Number
+  string cvv = 2;           // Card Verification Value
+  string expiry = 3;        // Expiry date (MM/YY)
+  string cardholder = 4;    // Cardholder name
+}
+
+message TokenizeCardResponse {
+  string token = 1;         // Unique token identifier
+  string first6 = 2;        // First 6 digits of PAN
+  string last4 = 3;         // Last 4 digits of PAN
+  string expiry = 4;        // Expiry date
+}
+
+message DetokenizeCardRequest {
+  string token = 1;         // Token identifier
+}
+
+message DetokenizeCardResponse {
+  string pan = 1;           // Primary Account Number
+  string cvv = 2;           // Card Verification Value
+  string expiry = 3;        // Expiry date
+  string cardholder = 4;    // Cardholder name
+}
+
+message RotateKeyRequest {
+  string key_id = 1;        // Current key ID to rotate
+}
+
+message RotateKeyResponse {
+  string new_key_id = 1;    // New key ID
+  int32 rotated_count = 2;  // Number of records rotated
+}
